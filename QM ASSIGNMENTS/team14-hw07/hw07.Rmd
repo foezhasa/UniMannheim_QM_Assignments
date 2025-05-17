@@ -1,0 +1,296 @@
+---
+title: "Quantitative Methods in Political Science - Homework 7"
+author: 
+  - "Team member 1 (with percentage)"
+  - "Team member 2 (with percentage)"
+  - "Team member 3 (with percentage)"
+date: "Due: November 11, 2022"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    toc: no
+---
+
+```{r setup, include=FALSE}
+# The first line sets an option for the final document that can be produced from
+# the .Rmd file. Don't worry about it.
+knitr::opts_chunk$set(echo = TRUE)
+
+# The next bit is quite powerful and useful. 
+# First you define which packages you need for your analysis and assign it to 
+# the p_needed object. 
+p_needed <-
+  c("viridis", "stargazer", "MASS")
+
+# Now you check which packages are already installed on your computer.
+# The function installed.packages() returns a vector with all the installed 
+# packages.
+packages <- rownames(installed.packages())
+# Then you check which of the packages you need are not installed on your 
+# computer yet. Essentially you compare the vector p_needed with the vector
+# packages. The result of this comparison is assigned to p_to_install.
+p_to_install <- p_needed[!(p_needed %in% packages)]
+# If at least one element is in p_to_install you then install those missing
+# packages.
+if (length(p_to_install) > 0) {
+  install.packages(p_to_install)
+}
+# Now that all packages are installed on the computer, you can load them for
+# this project. Additionally the expression returns whether the packages were
+# successfully loaded.
+sapply(p_needed, require, character.only = TRUE)
+
+# This is an option for stargazer tables
+# It automatically adapts the output to html or latex,
+# depending on whether we want a html or pdf file
+stargazer_opt <- ifelse(knitr::is_latex_output(), "latex", "html")
+```
+
+**Notes:**
+
+- *If you do not have any special reason, please do not load additional packages to solve this homework assignment. If you nevertheless do so, please indicate why you think this is necessary and add the package to the `p_needed` vector in the setup chunk above.*
+- In addition to the `Rmd`, please make sure that in the repo, there is a PDF knitted from your code. The automated check for reproducibility on Github will run only when you include the word "final" into the commit message.
+- Please try to answer the questions with **short** but very **precise** statements. However, do not hide behind seemingly fancy jargon.
+
+## Part 1: Definitions
+
+Re-read(!!) the King et al (2000) article and answer in one or two short sentences.
+
+**1.1 What are first differences?**
+
+Answer: 
+
+**1.2 Explain what a simulation based 95% confidence interval for quantities of interest is.**
+
+Answer: 
+
+## Part 2: Simulation, simulation ...
+
+**2.1 In 150 words or less: Explain the different steps required to generate expected values from a regression model. Do not include any R code.**
+
+Answer:
+
+**2.2 Complete the following `sim_function` that you can use to simulate expected values from a regression model.**
+
+```{r 2_3 sim_function}
+sim_function <- function(lm_obj, nsim = 1000, scenario){
+  
+  # Step 1: Get the regression coefficients
+  beta_hat <- coef(lm_obj)
+  
+  # Step 2: Generate sampling distribution
+  
+  # Step 2.1: Get the variance-covariance matrix.
+  V_hat <- vcov(lm_obj)
+  
+  # Step 2.2: Draw from the multivariate normal distribution.
+  library(MASS)
+  S <- mvrnorm(nsim, beta_hat, V_hat)
+
+  # Step 3: Choose interesting covariate values. 
+  # Make sure the matrix multiplication also works for single scenarios
+  if(is.null(nrow(scenario))){
+    scenario <- matrix(scenario, nrow = 1)
+  }
+  
+  # Print a message if the scenario does not fit the regression.
+  if(ncol(scenario) != length(lm_obj$coefficients)){
+    return(cat("The scenario has the wrong number of variables."))
+  } 
+  
+  # Step 4: Calculate Quantities of Interest - 
+  # Expected Values
+  EV <- S %*% t(X)
+  
+  return(EV)
+  }
+```
+
+
+**2.3 Try your function on the examples from the Lab. Does it return similar results?**
+
+```{r 2_3 Testing the sim_function}
+
+# loading data
+load(file = "raw-data/election2013_2.RData")
+df <- as.data.frame(election2013_2)
+
+# running regression model
+reg <- lm(leftvote ~ unemployment + east + 
+            unemployment*east, 
+          data = df)
+summary(reg)
+
+# preparing scenario
+scenario_east <- c(1, mean(df$unemployment), 1, mean(df$unemployment) * 1)
+X <- as.matrix(rbind(scenario_east))
+
+# applying function
+EV_east <- sim_function(reg, n = 1000, scenario_east)
+
+# plotting results   
+hist(
+  EV_east,
+  main = "",
+  las = 1,
+  col = viridis(4)[2],
+  border = "white",
+  xlab = "Expected Values for the voteshare of Die Linke for East
+     (With unemployment at its mean)",
+)
+
+
+# same for the "west" scenario
+scenario_west <- c(1, mean(df$unemployment), 0, mean(df$unemployment) * 0)
+X <- as.matrix(rbind(scenario_west))
+EV_west <- sim_function(reg, n = 1000, scenario_west)
+hist(
+  EV_west,
+  main = "",
+  las = 1,
+  col = viridis(4)[2],
+  border = "white",
+  xlab = "Expected Values for the voteshare of Die Linke for West
+     (With unemployment at its mean)",
+)
+
+
+```
+
+
+Answer:
+
+
+## Part 3: Regression, inference and simulation
+
+Load the `infantmortality2.dta` data set that you can find in the raw-data folder. The data set contains the following variables for the 1970s:
+
+|  Variable           |   Description                                       |
+|:--------------------|:----------------------------------------------------|
+| `income`            | Per-capita income in U.S. dollars.                  |
+| `logincome`         | Per-capita income in U.S. dollars, logged.          |
+| `infant`            | Infant-mortality rate per 1000 live births.         |
+| `loginfant`         | Infant-mortality rate per 1000 live births, logged. |
+| `region`            | Africa; Americas; Asia, Asia and Oceania; Europe.   |
+| `AfricaDummy, etc.` | Dummies indicating the region of a country.         |
+| `oil`               | Oil-exporting country: no, yes.                     |
+
+Table: Variables in the `infantmortality2.dta` data set.
+
+**3.1 Regress `loginfant` (DV) on `logincome` and control for the region of the world (use Africa as reference) and whether countries are oil-exporting or not.**
+
+```{r 3_1 Regression Model}
+# loading data
+load(file = "raw-data/election2013_2.RData")
+df <- as.data.frame(election2013_2)
+```
+
+
+**3.2 Calculate expected values of `loginfant` in European countries for mean levels of `logincome` and the median of oil export in Europe. Do so by following simulation steps 1 to 5 or just use the `sim_function` from Part 2. Describe this result in one or two short sentences (do not forget to state the uncertainty of your results!)**
+
+```{r 3_2}
+
+```
+
+Answer:
+
+**3.3 Calculate first differences in `loginfant` for oil vs. non oil exporting African countries (holding `logincome` at its mean). Do so by following simulation steps 1 to 5 or just use the \texttt{sim\_function} from Part 2. Describe your results in one or two short sentences.**
+
+```{r 3_3}
+# specifying that only for the African countries the mean - income is taken
+logincome_afr_only <- data$logincome*data$AfricaDummy
+logincome_afr_only <- logincome_afr_only[logincome_afr_only != 0]
+X_Afr_oil <- c(1, mean(logincome_afr_only), 0, 0, 0, 1) # scenario oil-exporting countries X_Afr_noil <- c(1, mean(logincome_afr_only), 0, 0, 0, 0) # scenario non oil-exporting coun
+X_Afr_oil
+```
+
+Answer:
+
+**3.4 Rerun the regression, this time without the region dummies.**
+
+
+
+```{r 3_4 Rerunning the Regression} 
+
+logincome_range <- seq(3.9, 8.7, 0.1) # range of interesting values
+X_logincome <- cbind(1, logincome_range, 1)
+ev_loginc <- sim_function(log_lm_I, nsim = 1000, scenario = X_logincome)
+# getting mean and uncertainty
+quants_mean_fun <- function(x) {
+c(quants = quantile(x, probs = c(0.025, 0.975)),
+    mean = mean(x))
+}
+quants_loginc <- apply(ev_loginc, 2, quants_mean_fun) # Plotting:
+plot(
+  logincome_range,
+  ev_loginc[2, ],
+  las = 1,
+  bty = "n",
+  pch = 19,
+  cex = 0.3,
+  ylim =  c(2, 7),
+  xlim = c(3, 9),
+  ylab = "Logged Infant Mortality",
+  main = "Logged Infant Mortality by Logged Income",
+  xlab = "Range of Logged Income",
+  type = "n"
+)
+# Let's add our actual observations.
+points(data$logincome[which(data$oil==1)],
+       data$loginfant[which(data$oil==1)],
+       pch = 19,
+       col = adjustcolor(viridis(3)[1], alpha = 0.5))
+# Now we add the lines.
+lines(logincome_range, quants_loginc[3,],
+      col = viridis(3)[2])
+# Let's add those confidence intervals.
+# adding lines for uncertainty
+lines(logincome_range, quants_loginc[1,], lty = "dashed", col = viridis(3)[2])
+lines(logincome_range, quants_loginc[2,], lty = "dashed", col = viridis(3)[2])
+```
+
+**3.5 Calculate and plot the effect of `logincome` on `loginfant` for oil exporting countries for an interesting range of values of `logincome`. Show and discuss the estimation uncertainty of this quantity of interest.**
+
+Answer:
+
+**3.6 A journalist working for "The Economist" has heard about your fascinating work and is interested in reporting your results in an article. She approaches you and asks you to provide her with a plot that is easy to understand of how _income in dollars_ affects _infant mortality rates_ in _non-oil exporting countries_ including any uncertainty. Specifically, she asks you to use the _original scales_ of the variables and _not the logged scales_ because her readership would have difficulties in interpreting the graph. Furthermore, she wants that your plot includes all uncertainty (estimation uncertainty and fundamental uncertainty). Generate this plot using the information from your regression of `loginfant` on `logincome` controlling for oil export (i.e. do not run a different regression model but use the model from the chunk "Rerunning the Regression").**
+
+```{r 3_6}
+X_logincome_noil <- cbind(1, logincome_range, 0)
+# calculating sigma for the normal distribution for the fundamental uncertainty
+sigma <- sqrt(sum(residuals(log_lm_I),ˆ2) / (nrow(data) - length(coef(log_lm_I))))
+# simulating the value
+Y_hat_loginc <- sim_function(log_lm_I, nsim = 1000,
+                             scenario = X_logincome_noil) + matrix(rnorm(
+                               1000*length(logincome_range), 0,
+                               sigma), ncol = length(logincome_range))
+
+exp_y_hat_loginc <- exp(Y_hat_loginc) # "re-do" the log transformation # calculating mean & uncertainties
+quants_Y_hat <- apply(exp_y_hat_loginc, 2, quants_mean_fun)
+# Plotting the simulation results
+par(mai = c(1, 1.5, 0.8, 0.4)+0.02)
+plot(
+  x = data$income[which(data$oil==0)],
+  y = data$infant[which(data$oil==0)],
+  las = 1,
+  bty = "n",
+  pch = 19,
+  cex = 1,
+  xlim = c(0, 6000),
+  ylim = c(0, 420),
+  col = adjustcolor(viridis(3)[1], alpha = 0.5),
+  ylab = "Infant-Mortality Rate \n(per 1000 Live Births)",
+  main = "Predicted Infant Mortality by Income",
+  xlab = "Per-capita income in U.S. dollars"
+)
+# adding the regression line
+lines(exp(logincome_range), quants_Y_hat[3,],
+      col = adjustcolor(viridis(3)[2]))
+# adding the CIs
+lines(exp(logincome_range), quants_Y_hat[1,],
+      lty=2, col = adjustcolor(viridis(3)[2]))
+lines(exp(logincome_range), quants_Y_hat[2,],
+      lty=2, col = adjustcolor(viridis(3)[2]))
+```
+

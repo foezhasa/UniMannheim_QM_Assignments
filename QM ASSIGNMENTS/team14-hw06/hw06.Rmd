@@ -1,0 +1,382 @@
+---
+title: "Quantitative Methods in Political Science - Homework 6"
+author: 
+  - "Team member 1 (with percentage)"
+  - "Team member 2 (with percentage)"
+  - "Team member 3 (with percentage)"
+date: "Due: October 20, 2022"
+output:
+  html_document:
+    toc: no
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+# The first line sets an option for the final document that can be produced from
+# the .Rmd file. Don't worry about it.
+knitr::opts_chunk$set(echo = TRUE)
+
+# The next bit is quite powerful and useful. 
+# First you define which packages you need for your analysis and assign it to 
+# the p_needed object. 
+p_needed <-
+  c("viridis", "stargazer")
+
+# Now you check which packages are already installed on your computer.
+# The function installed.packages() returns a vector with all the installed 
+# packages.
+packages <- rownames(installed.packages())
+# Then you check which of the packages you need are not installed on your 
+# computer yet. Essentially you compare the vector p_needed with the vector
+# packages. The result of this comparison is assigned to p_to_install.
+p_to_install <- p_needed[!(p_needed %in% packages)]
+# If at least one element is in p_to_install you then install those missing
+# packages.
+if (length(p_to_install) > 0) {
+  install.packages(p_to_install)
+}
+# Now that all packages are installed on the computer, you can load them for
+# this project. Additionally the expression returns whether the packages were
+# successfully loaded.
+sapply(p_needed, require, character.only = TRUE)
+
+# This is an option for stargazer tables
+# It automatically adapts the output to html or latex,
+# depending on whether we want a html or pdf file
+stargazer_opt <- ifelse(knitr::is_latex_output(), "latex", "html")
+```
+
+**Notes:**
+
+- *If you do not have any special reason, please do not load additional packages to solve this homework assignment. If you nevertheless do so, please indicate why you think this is necessary and add the package to the `p_needed` vector in the setup chunk above.*
+- In addition to the `Rmd`, please make sure that in the repo, there is a PDF knitted from your code. The automated check for reproducibility on Github will run only when you include the word "final" into the commit message.
+- *Please try to answer the questions with **short** but very **precise** statements. However, do not hide behind seemingly fancy jargon.*
+
+## Part 1: Definitions
+
+Answer in one or two short sentences.
+
+*1.1: What is the standard error of a regression coefficient?*
+
+Answer:The standard error of the coefficient measures how precisely the model estimates the coefficient's unknown value. The standard error of the coefficient is always positive.
+
+*1.2 What is a 'null hypothesis significance test'?*
+
+Answer: The null hypothesis significance test is a method of statistical inference by which an experimental factor is tested against a hypothesis of no effect or no relationship based on a given observation.
+
+
+*1.3 What is a confidence interval for a regression coefficient?*
+
+Answer: The confidence intervals provide a measure of precision for linear regression coefficient estimates. For instance, a 100(1–α)% confidence interval gives the range that the corresponding regression coefficient will be in with 100(1–α)% confidence.
+
+
+*1.4 What is the difference between a null hypothesis significance test and a hypothesis test using a confidence interval?*
+
+Answer: If the null hypothesized value is found in our confidence interval, then that would mean we have a bad confidence interval and our p-value would be high. Typically our null hypothesized value will be 0 (point of no difference), and if we find 0 in our confidence interval then that would mean we have a good chance of actually finding no difference. 
+
+
+
+*1.5 What is a p-value?*
+
+Answer: p-value is that given the observed t∗ in which the smallest significance level at which the null hypothesis would be rejected. This is called the p-value (p ∈ (0, 1)). In that regard, small p−values are evidence against the null, large p-values provide little evidence against the null.
+
+
+
+## Part 2: Regression and Inference
+
+Below you see the regression output. What are the values of A, B, C, D, E, F, G, H, I , J, K (rounding is permitted, but be sure to **show your work step-by-step**. You can also use `R` as a calculator).
+
+|           |   est.   |    s.e.   | t-value |       p-value        | 95% CIs |
+|-----------|:--------:|:---------:|:-------:|:--------------------:|:-------:|
+| X1        |    *C*   |    0.5    |   2.0   |          *D*         |   *E*   |
+| X2        |    3.6   |    *F*    |   1.8   |          *G*         |   *H*   |
+| Constant  |   25.0   |    2.0    |   *I*   |          *J*         |   *K*   |
+| RSS = *A* | ESS = 60 | TSS = 100 |         | Adjusted $R^2$ = *B* |  N = 60 |
+
+#RSS: A
+```{r}
+ESS <- 60
+TSS <- 100
+
+```
+
+```{r}
+RSS <- TSS - ESS
+RSS # A
+
+```
+
+#Adjusted $R^2$ = *B*:
+```{r}
+Adjusted_R2 <- 1 - (RSS / (n - k - 1)) / (TSS / (n - 1))
+Adjusted_R2 # B
+
+```
+
+#Coefficient of X1:C
+```{r}
+
+se_X1 <- 0.5
+t_value_X1 <- 2.0
+
+coef_X1 <- se_X1 * t_value_X1
+coef_X1 # C
+
+```
+
+#Calculate the p-value for X1 (D)
+
+```{r}
+p_value_X1 <- 2 * (1 - pt(abs(t_value_X1), df = n - k - 1))
+p_value_X1 # D
+
+```
+
+#Calculate the 95% CI for X1 (E):
+
+```{r}
+# Confidence level
+alpha <- 0.05
+
+# Degrees of freedom
+df <- n - k - 1
+
+# Critical t-value for 95% confidence interval
+t_critical <- qt(1 - alpha / 2, df)
+t_critical
+
+
+CI_lower_X1 <- coef_X1 - t_critical * se_X1
+CI_upper_X1 <- coef_X1 + t_critical * se_X1
+CI_X1 <- c(CI_lower_X1, CI_upper_X1)
+CI_X1 # E
+
+```
+#Calculate the standard error for X2 (E)
+```{r}
+coef_X2 <- 3.6
+t_value_X2 <- 1.8
+  
+se_X2 <- coef_X2 / t_value_X2
+se_X2 # F
+
+
+```
+#Calculate p value for X2(G)
+
+```{r}
+p_value_X2 <- 2 * (1 - pt(abs(t_value_X2), df = n - k - 1))
+p_value_X2 # G
+
+```
+#Calculate CI for X2 (H)
+
+```{r}
+CI_lower_X2 <- coef_X2 - t_critical * se_X2
+CI_upper_X2 <- coef_X2 + t_critical * se_X2
+CI_X2 <- c(CI_lower_X2, CI_upper_X2)
+CI_X2 
+
+```
+#Calculate the t-value for Constant(I)
+```{r}
+
+coef_Constant <- 25
+se_Constant <- 2.0
+t_value_Constant <- coef_Constant / se_Constant
+t_value_Constant # I
+
+```
+
+#Calculate p value for constant (J)
+
+```{r}
+p_value_Constant <- 2 * (1 - pt(abs(t_value_Constant), df = n - k - 1))
+p_value_Constant # J
+
+```
+
+#Calculate the 95% CI for Constant (K)
+```{r}
+CI_lower_Constant <- coef_Constant - t_critical * se_Constant
+CI_upper_Constant <- coef_Constant + t_critical * se_Constant
+CI_Constant <- c(CI_lower_Constant, CI_upper_Constant)
+CI_Constant # K
+
+```
+
+
+
+## Part 3: More Regression and Inference
+
+*You will work with `election2013` dataset, similar to the one from last week's homework. The data set contains the following variables:*
+
+|  Variable      |   Description                                              |
+|:-------------: |:----------------------------------------------------------:|
+| `WKR_NAME`     | name of the district                                       |
+| `leftvote`     | vote share for the party "Die Linke"                       |
+| `unemployment` | unemployment rate                                          |
+| `part`         | indicator for if the district is located in the former GDR |
+
+Table: Variables in the `elections2013` data set.
+
+*Regress `leftvote` on `unemployment`. Control for the East German districts (`east`). In the same model, explore if the effect of unemployment varies across the East and West German districts. You may need to do a pre-processing step before moving to the analysis.*
+
+```{r Exercise-3-0}
+#Preprocessing and transform variables to numeric
+
+election2013$unemployment_num <- as.numeric(election2013$unemployment)
+election2013$leftvote_num <- as.numeric(election2013$leftvote)
+
+# Transform variables to numeric if they are not already
+election2013$leftvote <- as.numeric(election2013$leftvote)
+election2013$unemployment <- as.numeric(election2013$unemployment)
+
+# Transform 'east' into a dummy variable where 0 is West and 1 is East
+election2013$part <- ifelse(election2013$part == "East", 1, 0)
+
+# Check the structure again to confirm the changes
+str(election2013)
+
+
+# Create an interaction term between unemployment and east
+election2013$unemployment_east <- election2013$unemployment * election2013$part
+
+# Verify the new interaction term
+head(election2013)
+
+# Fit the regression model
+model <- lm(leftvote ~ unemployment * part, data = election2013)
+
+# Display the summary of the regression model
+summary(model)
+
+```
+
+**3.1 Present your results in a table and interpret them. Explain your estimates, standard errors and p-values in a short paragraph.**
+
+```{r Exercise-3-1}
+
+```
+
+Answer:
+
+**3.2 Make a nice-looking and informative plot, which conveys your findings. Include the two regression lines. Briefly explain what you see on the plot.**
+
+```{r Exercise-3-2}
+
+# Fit the regression model for West German districts
+model_west <- lm(leftvote ~ unemployment, data = election2013, subset = (part == 0))
+
+# Fit the regression model for East German districts
+model_east <- lm(leftvote ~ unemployment, data = election2013, subset = (part == 1))
+
+# Summarize the models
+summary(model_west)
+summary(model_east)
+
+# Create the plot
+plot(election2013$unemployment, election2013$leftvote, col = ifelse(election2013$part == 1, "red", "blue"), 
+     pch = 19, xlab = "Unemployment Rate", ylab = "Left Vote Share", 
+     main = "Effect of Unemployment on Left Vote Share")
+
+# Add the regression lines
+abline(model_west, col = "blue", lwd = 2)
+abline(model_east, col = "red", lwd = 2)
+
+# Add a legend
+legend("topright", legend = c("West Germany", "East Germany"), 
+       col = c("blue", "red"), pch = 19, lwd = 2)
+
+```
+The blue points represent data from West German districts.
+The red points represent data from East German districts.
+The blue line represents the regression line for West German districts.
+The red line represents the regression line for East German districts.
+
+
+**3.3 Repeat your analysis, but this time transform the variable *unemployment* into a categorical variable, where `low` are the values of unemployment below 5, `middle` are the values of unemployment between 5 and 10, and `high` are values above 10. Don't forget to include the interaction with East or West Germany. Put the results in a well-formatted table and interpret the coefficients in your regression output.**
+
+```{r Exercise-3-3}
+# Create the categorical variable for unemployment
+election2013$unemployment_cat <- cut(election2013$unemployment, 
+                                     breaks = c(-Inf, 5, 10, Inf), 
+                                     labels = c("low", "middle", "high"))
+
+# Check the new variable
+table(election2013$unemployment_cat)
+```
+
+
+```{r Exercise-3-3}
+# Fit the regression model with interaction terms
+model_cat <- lm(leftvote ~ unemployment_cat * part, data = election2013)
+
+# Display the summary of the regression model
+summary(model_cat)
+
+```
+
+```{r}
+# Install and load the stargazer package
+install.packages("stargazer")
+library(stargazer)
+
+# Create a well-formatted table of the regression results
+stargazer(model_cat, type = "text", title = "Regression Results: Effect of Unemployment Category and East/West Germany on Left Vote Share")
+
+```
+
+## Part 4: Interpreting Results
+
+*A researcher wants to explain why left parties vary in their position on the (economic) left-right dimension. [^1] Her main hypothesis is that the position of the median voter matters: when more right-leaning parties gain electoral support, left parties will move to the right. Furthermore she considers the following variables:*
+
++ *Voting turnout: higher turnout levels mean that greater numbers of low income voters participate in an election.*
++ *Union density: strong unions will prevent left parties from moving to the right.*
+
+
+*After running two regressions of left-right position, ranging from -100 (left) to +100 (right), on the position of the median voter (on the same scale), turnout and union density, she obtains the following table:*
+
+|                 | Model 1 |       |         |   | Model 2 |       |         |
+|-----------------|:-------:|------:|--------:|--:|:-------:|------:|--------:|
+|                 |    est. |  s.e. |       p |   |    est. |  s.e. |       p |
+| Intercept       |  -0.183 | 0.108 |   0.094 |   |   0.126 | 0.103 |   0.224 |
+| Turnout         |   0.216 | 0.119 |   0.072 |   |   0.239 | 0.112 |   0.035 |
+| Union density   |  -0.956 | 0.106 | < 0.001 |   |  -0.978 | 0.100 | < 0.001 |
+| Median Voter    |         |       |         |   |   0.384 | 0.104 | < 0.001 |
+| $R^2$           |  0.450  |       |         |   |  0.516  |       |         |
+| Number of cases |   103   |       |         |   |   103   |       |         |
+
+*The researcher's interpretation of her results is as follows:*
+
+1. In Model 1, turnout is not important for explaining the position of left parties, because the coefficient for turnout divided by its standard error is smaller than 2.
+2. Higher union density prevents left parties from moving too much to the right. The coefficient is significant and in the expected direction.
+3. Including the median voter position improves the model, as evidenced by the larger $R^2$ of Model 2.
+4. The position of the median voter is significant. 
+5. Union density has the largest effect on the change in party position because the absolute value of the coefficient is about three times larger than the coefficient for turnout and for median voter.
+6. Union density is clearly the most important variable in the model (its p-value is the smallest among all variables).
+
+**Are those statements correct? Discuss each in one or two short sentences.**
+
+4.1:
+
+4.2:
+
+4.3:
+
+4.4:
+
+4.5:
+
+4.6:
+
+
+[^1]: Left parties do vary considerably, but the story is more intricate than in our simple exercise here. Read the 'real' paper at: [http://cps.sagepub.com/content/43/6/675](http://cps.sagepub.com/content/43/6/675)
+
+## R code
+
+<!-- The chunk below will print out the code from all the chunks in the document, even if you chose to hide chunks in the main text with `echo=FALSE` chunk option or `include=FALSE` option. You do not need to put any code in this chunk manually: it will gather code from other chunks automatically. -->
+
+```{r, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```

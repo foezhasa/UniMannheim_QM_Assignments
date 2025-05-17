@@ -1,0 +1,310 @@
+---
+title: "Quantitative Methods in Political Science - Homework 8"
+author: 
+  - "Team member 1 (with percentage)"
+  - "Team member 2 (with percentage)"
+  - "Team member 3 (with percentage)"
+date: "Due: November 17, 2022"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    toc: no
+---
+
+```{r setup, include=FALSE}
+# The first line sets an option for the final document that can be produced from
+# the .Rmd file. Don't worry about it.
+knitr::opts_chunk$set(echo = TRUE)
+
+# The next bit (lines 22-43) is quite powerful and useful. 
+# First you define which packages you need for your analysis and assign it to 
+# the p_needed object. 
+p_needed <-
+  c("viridis", "stargazer", "MASS", "optimx")
+
+# Now you check which packages are already installed on your computer.
+# The function installed.packages() returns a vector with all the installed 
+# packages.
+packages <- rownames(installed.packages())
+# Then you check which of the packages you need are not installed on your 
+# computer yet. Essentially you compare the vector p_needed with the vector
+# packages. The result of this comparison is assigned to p_to_install.
+p_to_install <- p_needed[!(p_needed %in% packages)]
+# If at least one element is in p_to_install you then install those missing
+# packages.
+if (length(p_to_install) > 0) {
+  install.packages(p_to_install)
+}
+# Now that all packages are installed on the computer, you can load them for
+# this project. Additionally the expression returns whether the packages were
+# successfully loaded.
+sapply(p_needed, require, character.only = TRUE)
+
+# This is an option for stargazer tables
+# It automatically adapts the output to html or latex,
+# depending on whether we want a html or pdf file
+stargazer_opt <- ifelse(knitr::is_latex_output(), "latex", "html")
+```
+
++ _Please try to answer the questions with **short** but very **precise** statements. However, do not hide behind seemingly fancy jargon._
++ _If you do not have any special reason, please do not load additional packages to solve this homework assignment. If you nevertheless do so, please indicate why you think this is necessary and add the package to the `p_needed` vector in the setup chunk._
++ _In addition to the `Rmd`, please make sure that in the repo, there is a PDF knitted from the latest version of your code. The automated check for reproducibility on Github will run only when you include the word "final" into the commit message._
++ _This time, we will ask you to start paying special attention to editing and formatting (this will be useful for your Data essay), so you start to use chunk options. You are welcome to have a look at lab code for examples of using chunk options or to consult [this page](https://yihui.org/knitr/options/)._
+
+\newpage 
+## Part 1: Maximum likelihood by hand
+
+You observe the following distribution of exam results in a class:
+
+| **Student**  |  **Result** |
+|:-------------|:------------|
+| Student 1    |  fail       |
+| Student 2    |  pass       |
+| Student 3    |  fail       |
+| Student 4    |  pass       |
+| Student 5    |  pass       |
+| Student 6    |  fail       |
+| Student 7    |  pass       |
+| Student 8    |  fail       |
+| Student 9    |  pass       |
+| Student 10   |  fail       |
+| Student 11   |  pass       |
+| Student 12   |  pass       |
+| Student 13   |  pass       |
+| Student 14   |  fail       |
+
+
+*1.1 Write down the likelihood function (using math mode in Latex).*
+
+Answer: 
+
+*1.2 Calculate the maximum likelihood estimate for $p_{\text{pass}}$. Solve this problem **analytically** (i.e. by hand on paper or using math mode in Latex).*  
+
+Answer: 
+
+
+*1.3 Now calculate the MLE for $p_{\text{pass}}$  using `R` **numerically**, by maximizing the **likelihood** function.*
+
+
+```{r numerical-maximization}
+binom_lik <- function(y, n, p) {
+  factorial(n) / (factorial(n - y) * factorial(y)) * p ^ y * (1 - p) ^ (n - y)
+}
+#We create a vector with possible values for p
+p_pass <- seq(0,1,0.0001)
+#Now we calculate likelihood of p given our data (y = 8, n = 14).
+lik_pass <- binom_lik(y = 8, n = 14, p = p_pass)
+#Finally we get the p-value that maximizes the Likelihood function.
+p_max_lik_pass <- p_pass[which.max(lik_pass)]
+p_max_lik_pass #approx. 0.57 is our most likely probability given the observations 
+#we could also use the optimize function
+res_opt <-
+  optimize(
+    f = binom_lik, 
+    interval = c(0, 1),
+    y = 8,
+    n = 14,
+    maximum = T
+  )
+res_opt$maximum #the maximum value is the same as before, approx. 0.57
+#we can also plot the function
+max_lik <- lik_pass[which.max(lik_pass)]
+plot(x = p_pass,
+     y = lik_pass,
+     xlim = c(0, 1),
+     ylim = c(0, 0.3),
+     pch = 19,
+     ylab = "L(p)",
+     xlab = "p (pass)",
+     type = "n",
+     las = 2,
+     xaxt = "n",
+     bty = "n")
+axis(1, seq(0, 1, 0.05))
+segments(x0 = p_max_lik_pass,
+         x1 = p_max_lik_pass,
+         y0 = 0,
+         y1 = max_lik,
+         col = "light green",
+         lwd = 2)
+segments(x0 = 0,
+         x1 = p_max_lik_pass,
+         y0 = max_lik,
+         y1 = max_lik,
+         col = "light green",
+         lwd = 2)
+lines(x = p_pass,
+     y = lik_pass,
+     xlim = c(0,1),
+     ylim = c(0, 0.3),
+     pch = 19)
+text(x = 0,
+     y = max_lik + 0.01,
+     labels = "Maximum likelihood estimate: p = 0.57",
+     col = "dark Green",
+     cex = 0.7,
+     pos = 4)
+     
+```
+
+*1.4 Show that maximizing the **log-likelihood function** gives you the same estimate for $p_{\text{pass}}$.* 
+
+
+```{r log-likelihood-maximization}
+#we set the function for the logs
+binom_loglik <- function(y, n, p) {
+  log(factorial(n) / (factorial(n - y) * factorial(y))) + 
+    y * log(p) + (n - y) * log(1 - p)
+}
+#we can use the same p_pass vector, so now we get the likelihood
+res_opt_log <- optimize(
+  f = binom_loglik,
+  interval = c(0, 1),
+  y = 8,
+  n = 14,
+  maximum = T
+)
+res_opt_log$maximum #the value is again approx. 0.57, q.e.d.
+#we can plot our results, comparing the values:
+loglik_pass <- binom_loglik(y = 8, n = 14, p = p_pass)
+max_loglik <- loglik_pass[which.max(loglik_pass)]
+p_log <- seq(0, 1, length.out = 1000)
+plot(
+  p_pass,
+  loglik_pass,
+  xlab = "p (pass)",
+  type = "l",
+  ylim = c(-10, 0),
+  las = 1,
+  bty = "n",
+  ylab = "logL(p)",
+  col = viridis(4)[1])
+segments(x0 = 0,
+         x1 = p_max_lik_pass+0.5,
+         y0 = max_loglik,
+         y1 = max_loglik,
+         col = viridis(4)[2],
+         lwd = 2)
+text(x = 0,
+     y = max_loglik + 0.35,
+     labels = "Logged maximum likelihood estimate: p = 0.57",
+     col = viridis(4)[2],
+     cex = 0.7,
+     pos = 4)
+#we add a dotted line with the p value from the previous exercise (unlogged)
+abline(v = res_opt_log$maximum,
+       col = viridis(4)[3],
+       lwd = 2,
+       lty = "dashed")
+text(x = p_max_lik_pass,
+     y = -5.15,
+     labels = "Unlogged MLS: p = 0.57",
+     col = viridis(4)[3],
+     cex = 0.7,
+     pos = 2,
+     srt=90)
+#since both gave the same result, the two lines intersect in p=0.57
+```
+
+
+
+## Part 2: Maximum likelihood for bivariate linear regression
+
+*2.1 Load the `infantmortality2.dta` data set (use a relative path). Using chunk options, hide the code and the output (if any is produced).*
+
+```{r load-data}
+#loading the data set
+infantmortality2 <- read_dta(file = "raw-data/infantmortality2.dta")
+
+```
+
+
+*2.2 Calculate the effect of logged income (IV) on logged infant mortality (DV) using OLS and ML. Include and explain your code in the **write-up**.*
+
+```{r ols-mle-linear-model}
+# OLS model
+reg_lm <- lm(infantmortality2$loginfant ~ infantmortality2$logincome)
+summary(reg_lm)
+# ML model function
+lm_loglik <- function(y, x, theta) {
+  N <- length(y)
+  
+  beta0 <- theta[1]
+  beta1 <- theta[2]
+  sigma2 <- exp(theta[3])
+  
+  logl <-
+    -N / 2 * log(sigma2) - 1 / (2 * sigma2) * sum((y - beta0 - beta1 * x) ^ 2)
+  return(logl)
+}
+# ML model starting values
+stval <- c(0, 0, 0)
+# ML model optimization
+res_lik <- optimx(
+    stval,
+    lm_loglik,
+    y = infantmortality2$loginfant,
+    x = infantmortality2$logincome,
+    control = list(maximize = T)
+  )
+res_lik
+summary(res_lik)
+```
+
+*2.3 Plot the data and draw regression lines from both OLS and ML estimates (consider putting regression lines on the same scatterplot). Add a meaningful name to your figure(s) using chunk option `fig.cap` and make the figure centered using `fig.align`. You can also adjust the dimensions of the figure with `fig.dim` to your liking. Hide the code for plots but show output of that chunk (i.e. only the plots). You don't need to simulate or plot the uncertainty around the regression lines.*
+
+```{r ols-mle-linear-model-plot}
+plot(infantmortality2$logincome, infantmortality2$loginfant, main = "Main title",
+     xlab = "X axis title", ylab = "Y axis title",
+     pch = 19, frame = FALSE)
+abline(reg_lm, col = "blue")
+```
+
+
+## Part 3: Optional question: Prove that MLE($\sigma^2$) is biased 
+
+The unbiased estimator of $\sigma^2$ in the bivariate linear model is $\hat{\sigma}^2 = \frac{1}{n - k - 1} \sum_{i=1}^N (y_i - \beta_0 - \beta_1x_i)^2$, where $k$ is the number of independent variables. Derive the Maximum Likelihood estimator of $\sigma^2$ and show that it is biased.
+
+\newpage
+```{r}
+# Likelihood function
+
+log_like <- function(theta, Y, X){
+  X <- as.matrix(X); Y <- as.matrix(Y);
+  N       <- nrow(X)
+  beta    <- theta[1]
+  sigma_2 <- theta[2]
+  e       <- Y - beta*X
+  loglik  <- -.5*N*log(2*pi)-.5*N*log(sigma_2) - ( (t(e) %*% e)/ (2*sigma_2) )
+  return(-loglik)
+}
+
+#generate data
+library(pacman)
+p_load(data.table)
+
+N = 500      # Sample size
+beta = 5     # Beta  
+sigma_2 = 5  # sigma^2 (Distribution of U)
+infantmortality2 <- data.table(X = rnorm(N, 0, 5),
+                 U = rnorm(N, 0, sqrt(sigma_2)))
+
+
+
+# Set grid of beta and sigma2 values 
+beta_vals <- seq(-10,10, by =1)
+sigma2_vals <- seq(1,10, by =1)
+
+
+
+```
+
+
+## R code
+
+<!-- The chunk below will print out the code from all the chunks in the document, even if you chose to hide chunks in the main text with `echo=FALSE` chunk option or `include=FALSE` option. You do not need to put any code in this chunk manually: it will gather code from other chunks automatically. -->
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
